@@ -1,0 +1,25 @@
+name: DevOps Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Application
+      run: npm run build
+
+    - name: Docker Build
+      run: docker build -t inventory-app .
+
+    - name: Run Container Test
+      run: docker run -d -p 5173:5173 inventory-app
