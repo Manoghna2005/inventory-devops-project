@@ -1,0 +1,7 @@
+{
+  "name": "RetailReliability AI",
+  "description": "A behavior-aware deep learning system for predicting inventory reliability in offline retail shops, featuring incentive mechanisms for shop owners and trust metrics for customers.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
