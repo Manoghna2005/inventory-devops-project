@@ -13,13 +13,13 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Install Dependencies
-      run: npm install
+      run: cd inventory-devops-project && npm install
 
     - name: Build Application (ignore errors)
-      run: npm run build || echo "Build failed but continuing"
+      run: cd inventory-devops-project && npm run build || echo "Build failed but continuing"
 
     - name: Docker Build
-      run: docker build -t inventory-app .
+      run: cd inventory-devops-project && docker build -t inventory-app .
 
     - name: Run Container Test
-      run: docker run -d -p 5173:5173 inventory-app
+      run: cd inventory-devops-project && docker run -d -p 5173:5173 inventory-app
