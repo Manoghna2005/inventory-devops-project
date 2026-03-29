@@ -1,10 +1,11 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { PredictionResult } from "../types";
 
-// Use platform-provided key or local Vite environment variable
-const apiKey = process.env.API_KEY || import.meta.env.VITE_API_KEY;
-const ai = new GoogleGenAI({ apiKey: apiKey });
+// ✅ FIXED ENV VARIABLE (ONLY THIS WORKS IN VITE)
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+// ✅ SAFE INIT
+const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 export async function predictReliabilityScore(
   frequency: number,
@@ -12,17 +13,33 @@ export async function predictReliabilityScore(
   delayHours: number,
   feedback: number
 ): Promise<PredictionResult> {
+
+  // ✅ SAFETY CHECK (VERY IMPORTANT)
+  if (!ai) {
+    console.warn("No API key → using fallback");
+
+    const fallbackScore = (accuracy * 0.6) + (feedback * 0.4);
+
+    return {
+      score: fallbackScore,
+      reasoning: "Fallback (no API key)",
+      incentiveTier: fallbackScore > 0.8 ? 'High' : fallbackScore > 0.5 ? 'Medium' : 'Low'
+    };
+  }
+
   try {
-    // Generate content with recommended model and schema configuration.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Predict reliability score (0-1) for a retail shop based on behavior:
-        - Update Frequency: ${frequency} updates/week
-        - Past Accuracy: ${accuracy} (0-1)
-        - Update Delay: ${delayHours} hours since last stock change
-        - Customer Feedback: ${feedback} (0-1)
-        
-        Return a JSON object with 'score' (number), 'reasoning' (string), and 'incentiveTier' (string: 'High', 'Medium', 'Low', 'None').`,
+
+        - Update Frequency: ${frequency}
+        - Past Accuracy: ${accuracy}
+        - Update Delay: ${delayHours}
+        - Customer Feedback: ${feedback}
+
+        Return ONLY JSON:
+        { "score": number, "reasoning": string, "incentiveTier": "High|Medium|Low|None" }`,
+
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -31,23 +48,31 @@ export async function predictReliabilityScore(
             score: { type: Type.NUMBER },
             reasoning: { type: Type.STRING },
             incentiveTier: { type: Type.STRING }
-          },
-          propertyOrdering: ["score", "reasoning", "incentiveTier"]
+          }
         }
-      },
+      }
     });
 
-    // Access .text property directly (not a method).
     const jsonStr = response.text?.trim() || "{}";
-    const result = JSON.parse(jsonStr);
-    return result as PredictionResult;
+
+    let result: PredictionResult;
+
+    try {
+      result = JSON.parse(jsonStr);
+    } catch {
+      throw new Error("JSON parse failed");
+    }
+
+    return result;
+
   } catch (error) {
     console.error("Reliability Prediction Error:", error);
-    // Fallback logic if API fails
+
     const fallbackScore = (accuracy * 0.6) + (feedback * 0.4);
+
     return {
       score: fallbackScore,
-      reasoning: "Computed using heuristic fallback.",
+      reasoning: "Computed using fallback",
       incentiveTier: fallbackScore > 0.8 ? 'High' : fallbackScore > 0.5 ? 'Medium' : 'Low'
     };
   }
